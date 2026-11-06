@@ -1,0 +1,58 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v6
+        continue-on-error: true
+      - name: Install
+        run: npm ci
+      - name: Build static export
+        env:
+          # Identificadores públicos. No hay secreto de cliente.
+          # El sitio de proyecto se sirve en https://iboybrian.github.io/kanban-contactos/
+          # El origen OAuth, sin path, es https://iboybrian.github.io
+          NEXT_PUBLIC_BASE_PATH: /kanban-contactos
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: 214191835958-mmja3vhe716ubvbure8oacs26favin4j.apps.googleusercontent.com
+          NEXT_PUBLIC_SPREADSHEET_ID: 1-f4wd3NPeZOfSD03CA29b1wMhpMa-Pg8sOnOsbKrMNg
+          NEXT_PUBLIC_ALLOWED_GOOGLE_EMAIL: brianjosue1900@gmail.com
+        run: npm run build
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
